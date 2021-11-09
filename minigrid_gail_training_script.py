@@ -6,7 +6,7 @@ import gym_minigrid
 from gym_minigrid import wrappers
 
 import numpy as np
-import pickle5 as pickle
+import pickle
 import torch
 
 from imitation.rewards.discrim_nets import ActObsMLP
@@ -29,6 +29,19 @@ import matplotlib.pyplot as plt
 
 import argparse
 
+CORPUS = sorted(['get', 'to', 'the', 'green', 'goal', 'square', 'blue'])
+WORD_TO_INDEX = {w : i for i,w in enumerate(CORPUS)}
+INDEX_TO_WORD = dict(zip(WORD_TO_INDEX.values(), WORD_TO_INDEX.keys()))
+
+def sentence2onehot(sentence):
+    one_hot_vectors = np.zeros((len(sentence), len(CORPUS)), dtype=np.float32)
+    for i,word in enumerate(sentence):
+        index = WORD_TO_INDEX[word]
+        one_hot_vectors[i][index] = 1.0
+    return one_hot_vectors
+
+sentence = ['get', 'to', 'the', 'green', 'goal', 'square']
+one_hot_vectors = sentence2onehot(sentence)
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -70,6 +83,7 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
+# args.env = "MiniGrid-Empty-8x8-v0"
 
 save_path = "./logs/" + args.env + "/gail/" + args.run + "/"
 os.makedirs(save_path, exist_ok=True)
@@ -79,10 +93,22 @@ print(f"Expert Dataset: {args.traj_name}")
 with open(traj_dataset_path, "rb") as f:
     trajectories = pickle.load(f)
 
+_env = gym.make(args.env)
+mission_statement = _env.mission
+mission_statement_one_hot = sentence2onehot(mission_statement.split(' '))
+for i,traj in enumerate(trajectories):
+    num_observations = traj.acts.shape[0]
+    # L, H = mission_statement_one_hot.shape[0], mission_statement_one_hot.shape[1]
+    # traj.mission_one_hot = mission_statement_one_hot.reshape(1, L, H).repeat(num_observations, axis=0)
+    # traj.mission_str = mission_statement
+    traj.mission = [mission_statement] * num_observations
+
 transitions = rollout.flatten_trajectories(trajectories)
 
-train_env = minigrid_get_env(args.env, 1, args.flat)
 
+train_env = minigrid_get_env(args.env, 1, args.flat)
+assert len(train_env.venv.envs) == 1
+mission_statement = train_env.venv.envs[0].mission
 if args.flat:
     discrim_type = ActObsMLP(
         action_space=train_env.action_space,
@@ -114,11 +140,12 @@ gail_trainer = adversarial.GAIL(
 )
 
 total_timesteps = 100000
+i = 0
 gail_trainer.train(total_timesteps=total_timesteps)
-# gail_trainer.gen_algo.save("gens/gail_gen_"+str(i))
+gail_trainer.gen_algo.save("gens/gail_gen_"+str(i))
 
-# with open('discrims/gail_discrim'+str(i)+'.pkl', 'wb') as handle:
-#     pickle.dump(gail_trainer.discrim, handle, protocol=pickle.HIGHEST_PROTOCOL)
+with open('discrims/gail_discrim'+str(i)+'.pkl', 'wb') as handle:
+    pickle.dump(gail_trainer.discrim, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 if args.vis_trained:

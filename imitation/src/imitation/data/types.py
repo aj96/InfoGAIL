@@ -30,7 +30,9 @@ def dataclass_quick_asdict(dataclass_instance) -> dict:
     return d
 
 
-@dataclasses.dataclass(frozen=True)
+# NOTE: This is supposed to be True; temporarily changing to false to allow for us to add
+# mission statement after-the-fact
+@dataclasses.dataclass(frozen=False)
 class Trajectory:
     """A trajectory, e.g. a one episode rollout from an expert policy."""
 
@@ -42,6 +44,9 @@ class Trajectory:
 
     infos: Optional[np.ndarray]
     """An array of info dicts, length trajectory_len."""
+
+    mission: Optional[str]
+    """string containing mission statement"""
 
     def __len__(self):
         """Returns number of transitions, `trajectory_len` in attribute docstrings.
@@ -76,7 +81,7 @@ def _rews_validation(rews: np.ndarray, acts: np.ndarray):
         raise ValueError(f"rewards dtype {rews.dtype} not a float")
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(frozen=False)
 class TrajectoryWithRew(Trajectory):
     rews: np.ndarray
     """Reward, shape (trajectory_len, ). dtype float."""
@@ -215,6 +220,11 @@ class Transitions(TransitionsMinimal):
     Boolean array indicating episode termination. Shape: (batch_size, ).
 
     `done[i]` is true iff `next_obs[i]` the last observation of an episode.
+    """
+
+    missions: str
+    """
+    str containing mission statement
     """
 
     def __post_init__(self):

@@ -309,7 +309,6 @@ class DiscrimNetGAIL(DiscrimNet):
         super().__init__(
             observation_space=observation_space, action_space=action_space, scale=scale
         )
-
         if discrim_net is None:
             self.discriminator = ActObsMLP(
                 action_space=action_space,
@@ -334,7 +333,8 @@ class DiscrimNetGAIL(DiscrimNet):
         A high value corresponds to predicting generator, and a low value corresponds to
         predicting expert.
         """
-        logits = self.discriminator(state, action)
+        # logits = self.discriminator(state, action)
+        logits = self.discriminator.forward(state, action)
         return logits
 
     def reward_test(

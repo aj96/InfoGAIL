@@ -274,6 +274,7 @@ class ReplayBuffer:
             "next_obs": obs_shape,
             "dones": (),
             "infos": (),
+            "missions": act_shape,
         }
         dtypes = {
             "obs": obs_dtype,
@@ -281,6 +282,7 @@ class ReplayBuffer:
             "next_obs": obs_dtype,
             "dones": np.bool,
             "infos": np.object,
+            "missions": np.object,
         }
         self._buffer = Buffer(capacity, sample_shapes=sample_shapes, dtypes=dtypes)
 

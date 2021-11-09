@@ -83,7 +83,7 @@ class TrajectoryAccumulator:
             for key, arr_list in out_dict_unstacked.items()
         }
         traj = types.TrajectoryWithRew(**out_dict_stacked)
-        assert traj.rews.shape[0] == traj.acts.shape[0] == traj.obs.shape[0] - 1
+        assert traj.rews.shape[0] == traj.acts.shape[0] == traj.mission.shape[0] == traj.obs.shape[0] - 1
         return traj
 
     def add_steps_and_auto_finish(
@@ -93,6 +93,7 @@ class TrajectoryAccumulator:
         rews: np.ndarray,
         dones: np.ndarray,
         infos: List[dict],
+        mission: str
     ) -> List[types.TrajectoryWithRew]:
         """Calls `add_step` repeatedly using acts and the returns from `venv.step`.
 
@@ -137,6 +138,7 @@ class TrajectoryAccumulator:
                     # *after* `act` (see above)
                     obs=real_ob,
                     infos=info,
+                    mission=mission
                 ),
                 env_idx,
             )
@@ -265,6 +267,7 @@ def generate_trajectories(
     #
     # To start with, all environments are active.
     active = np.ones(venv.num_envs, dtype=np.bool)
+    mission = venv.envs[0].mission
     while np.any(active):
         acts, _ = get_action(obs, deterministic=deterministic_policy)
         obs, rews, dones, infos = venv.step(acts)
@@ -274,9 +277,8 @@ def generate_trajectories(
         # *not* want to add any subsequent trajectories from it. We avoid this
         # by just making it never done.
         dones &= active
-
         new_trajs = trajectories_accum.add_steps_and_auto_finish(
-            acts, obs, rews, dones, infos
+            acts, obs, rews, dones, infos, mission
         )
         trajectories.extend(new_trajs)
 
@@ -373,9 +375,11 @@ def flatten_trajectories(
     Returns:
       The trajectories flattened into a single batch of Transitions.
     """
-    keys = ["obs", "next_obs", "acts", "dones", "infos"]
+    keys = ["obs", "next_obs", "acts", "dones", "infos", "missions"]
     parts = {key: [] for key in keys}
-    for traj in trajectories:
+    for i,traj in enumerate(trajectories):
+        parts['missions'].append(traj.mission)
+
         parts["acts"].append(traj.acts)
 
         obs = traj.obs

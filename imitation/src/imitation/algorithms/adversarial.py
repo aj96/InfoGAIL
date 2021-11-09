@@ -132,6 +132,8 @@ class AdversarialTrainer:
         else:
             self.expert_data_loader = expert_data
         self._endless_expert_iterator = util.endless_iter(self.expert_data_loader)
+        # can call next() on iterator here to see what single trainng example looks like
+        # mission statement has been added as input
 
         self.debug_use_ground_truth = debug_use_ground_truth
         self.venv = venv
@@ -273,6 +275,7 @@ class AdversarialTrainer:
             learn_kwargs = {}
 
         with logger.accumulate_means("gen"):
+            # this is where generator is trained
             self.gen_algo.learn(
                 total_timesteps=total_timesteps,
                 reset_num_timesteps=False,
